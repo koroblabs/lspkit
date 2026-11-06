@@ -1,0 +1,59 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/check",
+  "crates/cli",
+  "crates/lsp",
+  "crates/tools/arch",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Korob Labs <opensource@koroblabs.com>"]
+# A server is released as a binary, not as crates.
+publish = false
+
+[workspace.dependencies]
+# Internal crates. Which may depend on which is set by the allowed-edges matrix in
+# `crates/tools/arch/src/dependency_rules.rs`, which a test enforces.
+kitserver-check = { path = "crates/check" }
+kitserver-lsp = { path = "crates/lsp" }
+
+# lspkit, pinned to a revision so this build does not change when lspkit does. `just bump` in
+# ../lspkit moves every server to a new revision at once.
+lspkit-arch = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-fixture = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-flow = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-fuzz = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-heap = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-perf = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-ratchet = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-runtime = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-text = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+lspkit-walk = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
+
+# Third-party. An engine that decides what a file contains (a parser, a dictionary) is pinned with
+# `=`, and only one crate may name it (a `Foreign` row in the arch rules).
+expect-test = "1.5.1"
+serde_json = "1"
+# Must match lspkit's tokio: the runtime and the flow tests are built on it.
+tokio = "1"
+
+# Set explicitly because the runtime relies on it. A panic in a handler is contained by unwinding.
+# With "abort", one handler bug kills the editor's server. `lspkit_arch::baseline` checks it.
+[profile.release]
+panic = "unwind"
+
+[profile.dev]
+panic = "unwind"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"

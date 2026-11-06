@@ -1,0 +1,43 @@
+// The Justfile's recipes in Zed's task picker. `just pr-ready` runs the checks CI runs.
+[
+  {
+    "label": "just pr-ready",
+    "command": "just",
+    "args": ["pr-ready"]
+  },
+  {
+    "label": "just fmt",
+    "command": "just",
+    "args": ["fmt"]
+  },
+  {
+    "label": "just lint",
+    "command": "just",
+    "args": ["lint"]
+  },
+  {
+    "label": "just test",
+    "command": "just",
+    "args": ["test"]
+  },
+  {
+    "label": "just doc",
+    "command": "just",
+    "args": ["doc"]
+  },
+  {
+    "label": "just arch",
+    "command": "just",
+    "args": ["arch"]
+  },
+  {
+    "label": "just try ../phrost",
+    "command": "just",
+    "args": ["try", "../phrost"]
+  },
+  {
+    "label": "just try ../orthra",
+    "command": "just",
+    "args": ["try", "../orthra"]
+  }
+]

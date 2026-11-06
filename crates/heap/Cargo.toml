@@ -1,0 +1,31 @@
+[package]
+name = "lspkit-heap"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "A global allocator for language servers that returns large freed blocks to the OS and counts live memory."
+readme = "README.md"
+
+[features]
+# For targets such as musl, whose allocator neither returns memory nor can be asked to. Pairs
+# with a binary that installs mimalloc (phrost-cli's `mimalloc` feature), which this asks to
+# collect.
+mimalloc = ["dep:libmimalloc-sys", "libmimalloc-sys/extended"]
+
+[dependencies]
+libmimalloc-sys = { version = "0.1.49", optional = true }
+
+# The only crate in the workspace allowed `unsafe`, for a global allocator and its foreign calls.
+# The workspace forbids it everywhere else, so this crate cannot inherit the workspace lints.
+[lints.rust]
+unsafe_code = "allow"
+unreachable_pub = "warn"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"

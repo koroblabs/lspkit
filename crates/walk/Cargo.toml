@@ -1,0 +1,20 @@
+[package]
+name = "lspkit-walk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "A parallel project file walker for language servers that honors git ignore files and returns a fixed order."
+readme = "README.md"
+
+[dependencies]
+ignore = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

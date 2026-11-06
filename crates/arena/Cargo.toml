@@ -1,0 +1,16 @@
+[package]
+name = "lspkit-arena"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Typed dense arenas addressed by small ids, with flat storage for many short id lists."
+readme = "README.md"
+
+[dependencies]
+
+[lints]
+workspace = true

@@ -1,0 +1,4 @@
+/target
+/THIRD-PARTY-LICENSES.md
+# Agent worktrees live here. If committed, they become gitlinks.
+/.claude/

@@ -1,0 +1,40 @@
+# `just --list` shows every recipe. Run `just pr-ready` before committing.
+
+# Full test suite.
+test:
+    cargo nextest run --workspace
+
+# Accept new snapshot output, for the workspace or one crate. Read the diff before committing it.
+# Uses `cargo test`, not nextest: nextest runs one process per test, and tests accepting into the
+# same file overwrite each other.
+accept crate="":
+    UPDATE_EXPECT=1 cargo test {{ if crate == "" { "--workspace" } else { "-p " + crate } }}
+
+[doc("The boundaries: allowed edges, foreign engines, reads on the request path, the baseline.")]
+arch:
+    cargo test -p kitserver-arch
+
+[doc("Formatting and clippy, the way CI runs them.")]
+lint:
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
+
+fmt:
+    cargo fmt --all
+
+[doc("Licenses, bans, sources and advisories.")]
+deny:
+    cargo deny check
+
+[doc("Every budget, measured on real files; exits 1 when one is over. Run it on an idle machine.")]
+perf *paths:
+    cargo run --release -p kitserver-cli -- perf {{paths}}
+
+# MIT, BSD and Apache require their notices to ship with a binary. Data the binary embeds
+# (grammars, dictionaries, stubs) is not a crate: ship its license files too.
+[doc("Licenses of every crate the binary links, for a release archive: `just licenses [file]`.")]
+licenses out="THIRD-PARTY-LICENSES.md":
+    cargo about generate --locked --fail -c about.toml -m crates/cli/Cargo.toml -o {{out}} about.hbs
+
+[doc("The gate before a commit.")]
+pr-ready: lint test deny

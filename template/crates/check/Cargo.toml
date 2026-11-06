@@ -1,0 +1,19 @@
+[package]
+name = "kitserver-check"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "What kitserver knows about its language: text in, findings out, no protocol."
+
+[dependencies]
+# Without its `lsp` feature: this crate must not name a protocol type.
+lspkit-text.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true
+lspkit-fixture.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,26 @@
+[package]
+name = "lspkit-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Being a language server, whatever the language: the protocol and its message loop, cancellation, surviving panics and slow or silent clients, progress, and publishing."
+readme = "README.md"
+
+[dependencies]
+futures-util = { workspace = true, features = ["sink"] }
+ls-types.workspace = true
+serde.workspace = true
+serde_json = { version = "1", features = ["raw_value"] }
+tokio = { workspace = true, features = ["io-std", "io-util", "macros", "rt", "sync", "time"] }
+
+[dev-dependencies]
+expect-test.workspace = true
+futures-util = "0.3"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "io-std", "io-util", "sync", "time", "test-util"] }
+
+[lints]
+workspace = true

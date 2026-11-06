@@ -1,0 +1,5 @@
+lspkit
+Copyright 2026 Korob Labs <opensource@koroblabs.com>
+
+lspkit-runtime contains code derived from tower-lsp (Copyright 2023 Eyal Kalderon) and
+tower-lsp-server (Copyright 2025 Milo Moisson), both licensed under MIT OR Apache-2.0.

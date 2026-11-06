@@ -1,0 +1,50 @@
+// Zed settings for lspkit. Saving formats Rust and Markdown the way `just lint` and CI check them,
+// and leaves the formatting of other files alone.
+{
+  "format_on_save": "off",
+  "ensure_final_newline_on_save": true,
+  "remove_trailing_whitespace_on_save": true,
+  "languages": {
+    "Rust": {
+      // rustfmt through rust-analyzer, with this repository's toolchain and rustfmt.toml.
+      "format_on_save": "on",
+      "formatter": "language_server",
+      "preferred_line_length": 100,
+      "wrap_guides": [100]
+    },
+    "Markdown": {
+      // The same prettier as `just fmt`, at the version CI pins, with .prettierrc.json.
+      "format_on_save": "on",
+      "formatter": {
+        "external": {
+          "command": "npx",
+          "arguments": ["--yes", "prettier@3.8.0", "--stdin-filepath", "{buffer_path}"]
+        }
+      },
+      "preferred_line_length": 100,
+      "wrap_guides": [100]
+    }
+  },
+  "lsp": {
+    "rust-analyzer": {
+      "initialization_options": {
+        // Clippy with all features, as CI runs it.
+        "cargo": {
+          "features": "all"
+        },
+        "check": {
+          "command": "clippy"
+        }
+      }
+    },
+    "orthra": {
+      "initialization_options": {
+        "languages": ["en-US"],
+        "context": {
+          "enabled": true,
+          "model": "small"
+        }
+      }
+    }
+  }
+}

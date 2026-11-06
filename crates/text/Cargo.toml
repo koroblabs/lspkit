@@ -1,0 +1,29 @@
+[package]
+name = "lspkit-text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Line indexes and column conversion between bytes, UTF-16 and characters, with optional LSP positions and edits."
+readme = "README.md"
+
+[features]
+# Protocol positions, ranges and edits, and choosing an encoding at `initialize`. Off for a crate
+# below the server, which must not name a protocol type.
+lsp = ["dep:ls-types"]
+
+[dependencies]
+# Finding line ends with SIMD rather than a byte at a time: an index is built for every text a
+# server holds and, through `lsp::apply`, at every edit. Already in every server's graph.
+memchr = "2.8"
+text-size = "1.1.1"
+ls-types = { workspace = true, optional = true }
+
+[dev-dependencies]
+expect-test.workspace = true
+
+[lints]
+workspace = true

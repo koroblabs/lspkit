@@ -1,0 +1,21 @@
+[package]
+name = "lspkit-arch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Architecture checks for a Cargo workspace, run as ordinary tests."
+readme = "README.md"
+
+[dependencies]
+toml.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true
+tempfile = "3"
+
+[lints]
+workspace = true

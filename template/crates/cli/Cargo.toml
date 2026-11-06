@@ -1,0 +1,27 @@
+[package]
+name = "kitserver-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish.workspace = true
+description = "kitserver's command line: the server, the checker, and the perf sweep."
+
+[[bin]]
+name = "kitserver"
+path = "src/main.rs"
+
+[dependencies]
+kitserver-check.workspace = true
+kitserver-lsp.workspace = true
+lspkit-heap.workspace = true
+lspkit-perf.workspace = true
+lspkit-ratchet.workspace = true
+lspkit-walk.workspace = true
+tokio = { workspace = true, features = ["io-std", "macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

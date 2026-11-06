@@ -1,0 +1,20 @@
+[package]
+name = "lspkit-fuzz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Seeded random edits that check a language server's incremental state against a fresh build."
+readme = "README.md"
+
+[dependencies]
+text-size = "1.1.1"
+
+[dev-dependencies]
+expect-test.workspace = true
+
+[lints]
+workspace = true

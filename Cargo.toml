@@ -1,0 +1,58 @@
+[workspace]
+resolver = "3"
+members = [
+  "crates/arch",
+  "crates/arena",
+  "crates/fixture",
+  "crates/flow",
+  "crates/fuzz",
+  "crates/heap",
+  "crates/memsize",
+  "crates/perf",
+  "crates/ratchet",
+  "crates/runtime",
+  "crates/text",
+  "crates/walk",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# The toolchain in `rust-toolchain.toml`, which CI builds with. No older version is tested.
+rust-version = "1.99"
+license = "MIT OR Apache-2.0"
+authors = ["Korob Labs <opensource@koroblabs.com>"]
+# Taken from git, pinned to a revision, and not published to crates.io (see the README).
+publish = false
+repository = "https://github.com/koroblabs/lspkit"
+description = "What a fast language server needs that is not about the language it serves."
+
+[workspace.dependencies]
+expect-test = "1.5.1"
+toml = "1"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+# The protocol types, pinned with `=`. Every server uses them through `lspkit_runtime::protocol`,
+# and two versions in one dependency graph are two sets of types that do not interoperate.
+ls-types = "=0.0.6"
+serde = { version = "1", features = ["derive"] }
+# Must be the same tokio the servers use: the runtime and the flow harness are built on it, and a
+# server's own tasks run on the same runtime.
+tokio = "1"
+
+# Only a consumer's profile applies to its binary, and both consumers set `panic = "unwind"`. The
+# loop contains a handler's panic by unwinding, so the bug fails only that request. It is set here
+# too so this workspace's tests run the same way.
+[profile.release]
+panic = "unwind"
+
+[profile.dev]
+panic = "unwind"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unreachable_pub = "warn"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"

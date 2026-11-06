@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+# Each job installs Rust with rustup instead of relying on the runner or a `container:` image.
+#
+# GitHub's `ubuntu-latest` ships Rust, but Gitea and `act` runner images do not, so relying on the
+# runner fails with `cargo: command not found`. A `container: rust:1.97.1` image fixes that but
+# breaks `actions/checkout`, which is a JavaScript action. GitHub injects Node into job containers
+# and other runners do not, so it fails with `exec: "node": executable file not found`.
+#
+# With rustup, the actions run on the runner's own image, which has Node. The compiler version
+# comes from `rust-toolchain.toml`, so it is pinned in one place.
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: install the pinned toolchain
+        run: |
+          command -v rustup >/dev/null || curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      # Same prettier version as `just lint`. Node is already on the runner for `actions/checkout`.
+      - run: npx --yes prettier@3.8.0 --check "**/*.md"
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # No Linux build compiles the heap's Windows calls or its fallback for targets without mapped
+      # pages. The `mimalloc` feature stays off, since its C code needs each target's C compiler.
+      - name: lint the heap for other platforms
+        run: |
+          rustup target add x86_64-pc-windows-msvc x86_64-unknown-freebsd
+          for target in x86_64-pc-windows-msvc x86_64-unknown-freebsd; do
+            cargo clippy -p lspkit-heap --all-targets --target "$target" -- -D warnings
+          done
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: install the pinned toolchain
+        run: |
+          command -v rustup >/dev/null || curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - name: install cargo-nextest
+        run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "$HOME/.cargo/bin"
+      - run: cargo nextest run --workspace
+
+  # Builds the API docs as docs.rs would and runs their examples, including each crate's README.
+  # nextest does not run doctests, so without this job a broken example would go unnoticed.
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: install the pinned toolchain
+        run: |
+          command -v rustup >/dev/null || curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --workspace --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - run: cargo test --workspace --doc --all-features
+
+  # The architecture checks get their own job, so a layering violation shows up as its own failure
+  # instead of one test among hundreds.
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: install the pinned toolchain
+        run: |
+          command -v rustup >/dev/null || curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p lspkit-arch
+
+  # Generates the server template against this checkout and runs its lints, tests and arch checks.
+  # Without this job, a broken template is only found when someone starts a server from it.
+  template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: install the pinned toolchain
+        run: |
+          command -v rustup >/dev/null || curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: tools/template.sh check
+
+  # cargo-deny is installed rather than run through `EmbarkStudios/cargo-deny-action`, which is a
+  # Docker action. Container actions are what most often fails on a self-hosted runner, and a
+  # failure in this job should be about licenses, not about the runner.
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: install the pinned toolchain
+        run: |
+          command -v rustup >/dev/null || curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cargo-deny --locked --version 0.20.2
+      # Split in two because only the advisories need the network. Bans, licenses and sources
+      # depend only on `Cargo.lock` and `deny.toml`, so they run without outbound access.
+      - run: cargo deny check bans licenses sources
+      # cargo-deny clones the advisory database with git. Where GitHub refuses anonymous clones,
+      # that fails with `could not read Username for 'https://github.com'`, which looks like a
+      # lockfile problem but is a 401. `actions/checkout` works because it is given a token, so
+      # this step gives git the same one. It is set through `GIT_CONFIG_*` for this step only,
+      # because a self-hosted runner keeps whatever a job writes to `~/.gitconfig`.
+      - name: check advisories
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ github.token }}@github.com/.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/
+        run: cargo deny check advisories

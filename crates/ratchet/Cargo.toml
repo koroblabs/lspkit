@@ -1,0 +1,21 @@
+[package]
+name = "lspkit-ratchet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Per-code finding counts checked against a baseline that may only go down."
+readme = "README.md"
+
+[dependencies]
+toml.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true
+tempfile = "3"
+
+[lints]
+workspace = true

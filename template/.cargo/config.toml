@@ -1,0 +1,4 @@
+# lspkit is a private repository. Cargo's built-in git client does not use the system credential
+# store, so fetch with the git command line, which does.
+[net]
+git-fetch-with-cli = true
