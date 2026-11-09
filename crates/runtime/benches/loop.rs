@@ -1,5 +1,6 @@
 //! Times the message loop on the workloads the CHANGELOG measures: a client on duplex pipes drives
-//! `transport::serve`, and each scenario is the best of five rounds.
+//! `transport::serve`, and each scenario is the best of five rounds, with the median beside it:
+//! a median well above the best says the run was disturbed and should not be compared.
 //!
 //! `cargo bench -p lspkit-runtime [-- <filter>]`. Run it before and after a change, on an idle
 //! machine. It times the whole round trip, so a change to the handlers' own work (building 500
@@ -305,13 +306,13 @@ async fn main() {
         });
     }
 
-    println!("{:<60} {:>10}", "scenario (best of five)", "ms");
+    println!("{:<60} {:>10} {:>10}", "scenario", "best ms", "median ms");
     for scenario in &scenarios {
         if !scenario.name.contains(&filter) {
             continue;
         }
-        let mut best = Duration::MAX;
-        for _ in 0..5 {
+        let mut rounds = [Duration::MAX; 5];
+        for round in &mut rounds {
             let started = Instant::now();
             let writer = {
                 let bytes = scenario.bytes.clone();
@@ -330,10 +331,16 @@ async fn main() {
                     responses += 1;
                 }
             }
-            best = best.min(started.elapsed());
+            *round = started.elapsed();
             to_server = writer.await.expect("the writer finished");
         }
-        println!("{:<60} {:>10.2}", scenario.name, best.as_secs_f64() * 1e3);
+        rounds.sort();
+        println!(
+            "{:<60} {:>10.2} {:>10.2}",
+            scenario.name,
+            rounds[0].as_secs_f64() * 1e3,
+            rounds[2].as_secs_f64() * 1e3
+        );
     }
 
     next_id += 1;

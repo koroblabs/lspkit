@@ -1,9 +1,10 @@
 //! Times the hot paths of lspkit-text: building an index, applying one edit, converting columns.
 //!
 //! `cargo bench -p lspkit-text --features lsp [-- <filter>]`. Each figure is the best of seven
-//! rounds, in microseconds per call. Run it before and after a change, on an idle machine; on a
-//! machine with efficiency cores the same code can read 60 % slower on one of them, so compare
-//! the best figures.
+//! rounds, in microseconds per call, with the median of the seven beside it. Run it before and
+//! after a change, on an idle machine. A median well above the best says the run was disturbed:
+//! a build on the machine, or the thread on an efficiency core, where the same code read 60 %
+//! slower (199 µs against 325 on an M2 Max); compare best figures from runs whose median is close.
 use std::{hint::black_box, time::Instant};
 
 use ls_types::{Position, Range, TextDocumentContentChangeEvent};
@@ -19,15 +20,19 @@ fn main() {
         if !name.contains(&filter) {
             return;
         }
-        let mut best = f64::INFINITY;
-        for _ in 0..7 {
+        let mut rounds = [0.0f64; 7];
+        for round in &mut rounds {
             let started = Instant::now();
             for _ in 0..iterations {
                 work();
             }
-            best = best.min(started.elapsed().as_secs_f64() * 1e6 / iterations as f64);
+            *round = started.elapsed().as_secs_f64() * 1e6 / iterations as f64;
         }
-        println!("{name:<60} {best:>10.3} µs");
+        rounds.sort_by(f64::total_cmp);
+        println!(
+            "{name:<60} {:>10.3} µs   median {:>10.3}",
+            rounds[0], rounds[3]
+        );
     };
 
     let lf = code(25_000, "\n");
