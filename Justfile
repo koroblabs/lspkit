@@ -15,6 +15,11 @@ test-one crate filter="":
 accept crate="":
     UPDATE_EXPECT=1 cargo test --all-features {{ if crate == "" { "--workspace" } else { "-p " + crate } }}
 
+[doc("The hot paths timed: lspkit-text's columns and edits, lspkit-runtime's message loop. Compare before and after a change, on an idle machine.")]
+bench *filter:
+    cargo bench -p lspkit-text --all-features --bench text -- {{filter}}
+    cargo bench -p lspkit-runtime --bench loop -- {{filter}}
+
 [doc("The boundaries: allowed edges, foreign engines, filesystem reads on the request path.")]
 arch:
     cargo test -p lspkit-arch

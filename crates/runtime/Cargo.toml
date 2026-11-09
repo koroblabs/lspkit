@@ -22,5 +22,10 @@ expect-test.workspace = true
 futures-util = "0.3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "io-std", "io-util", "sync", "time", "test-util"] }
 
+# `cargo bench -p lspkit-runtime`: the message loop's throughput on the CHANGELOG's workloads.
+[[bench]]
+name = "loop"
+harness = false
+
 [lints]
 workspace = true

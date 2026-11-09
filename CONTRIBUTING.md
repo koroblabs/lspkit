@@ -38,7 +38,8 @@ Other recipes:
 - Crates do not depend on each other (`lspkit-flow` on `lspkit-runtime` is the exception).
   `lspkit-arch` checks this.
 - A change to a hot path, the runtime or the allocator needs a before and after measurement in the
-  commit message.
+  commit message. `just bench` times lspkit-text's columns and edits and lspkit-runtime's message
+  loop; run it on the revision before the change and after, on an idle machine.
 - `unsafe` is allowed only in `lspkit-heap`.
 - Prefer `pub(crate)`; make an item `pub` only when it is part of the API.
 - Snapshot tests compare whole results with `expect-test`. Accept them with `just accept`, which

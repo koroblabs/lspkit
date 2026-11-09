@@ -25,5 +25,11 @@ ls-types = { workspace = true, optional = true }
 [dev-dependencies]
 expect-test.workspace = true
 
+# `cargo bench -p lspkit-text --features lsp`: building an index, one edit, column conversions.
+[[bench]]
+name = "text"
+harness = false
+required-features = ["lsp"]
+
 [lints]
 workspace = true

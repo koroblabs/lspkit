@@ -83,6 +83,10 @@ Four things are specific to this repository:
   reason the code is shaped the way it is, and a reader deciding whether to change it needs to know
   the shape was paid for.
 - **Whole-result `expect-test` snapshots, never substrings**, as in the servers.
+- **`just bench` is the measurement for a change here.** It times lspkit-text's index, edits and
+  column conversions and lspkit-runtime's message loop. Run it on the revision before the change and
+  after, on an idle machine, and put both figures in the commit; a server's `perf` sweep then
+  confirms what reached it.
 - **`template/` is a server, and changes with the API.** A change here that a server would have to
   follow is made in `template/` in the same commit; `just template` (in `pr-ready`, and a CI job)
   generates it against this checkout and builds it. It is never built where it lies -- `kitserver`

@@ -7,6 +7,19 @@ each entry lists what a dependent has to change.
 
 ### Changed
 
+- heap: a new `override` feature makes mimalloc the process's `malloc`, under `Heap`'s small
+  allocations and under every C library in the binary, so `release_freed` collects what they freed
+  too. Measured on macOS 27 by the kernel's footprint after bootstrap and `release_freed`: phrost on
+  29 094 files went from 175 MB to 160 MB (peak 204 to 199, indexing 1.26 s to 1.17 s); orthra on
+  the helix checkout from 28 MB to 14 MB and on the phrost checkout from 19 MB to 15 MB. Both
+  servers' test suites pass with it. The `mimalloc` feature now selects mimalloc v2: v3 left 207 MB
+  on phrost where v2 left 160 MB. The template turns `override` on. In the same runs `ps`'s RSS rose
+  from 186 MB to 223 MB, which is what made mimalloc look worse when it was first tried; see perf.
+- perf: `rss::current` reports the physical footprint on macOS, from the system's `footprint` tool,
+  instead of `ps`'s resident set, which keeps counting pages an allocator has given back with
+  `MADV_FREE_REUSABLE`. In one test the process stood at 150 MB of RSS and 47 MB of footprint, and
+  the kernel reported the other 101 MB as reusable. Linux still reads `VmRSS`. A server's memory
+  budgets on macOS now judge what the machine actually gives up.
 - text: a column is counted from the bytes instead of decoding characters, and an edit's two
   positions are found in one scan that stores nothing instead of an index built through the edit's
   line. On a 2 KB Cyrillic line, offset to UTF-16 position went from 0.71 µs to 0.24 and position to
@@ -19,21 +32,11 @@ each entry lists what a dependent has to change.
   of boxing it. Under a counting allocator, 2 000 small requests answered at once took 3.8 ms
   instead of 4.7, with 30 000 allocations instead of 38 000; a message dominated by its payload
   costs the same.
-- perf: `rss::current` reports the physical footprint on macOS, from the system's `footprint` tool,
-  instead of `ps`'s resident set, which keeps counting pages an allocator has given back with
-  `MADV_FREE_REUSABLE`. In one test the process stood at 150 MB of RSS and 47 MB of footprint, and
-  the kernel reported the other 101 MB as reusable. Linux still reads `VmRSS`. A server's memory
-  budgets on macOS now judge what the machine actually gives up.
-- heap: a new `override` feature makes mimalloc the process's `malloc`, under `Heap`'s small
-  allocations and under every C library in the binary, so `release_freed` collects what they freed
-  too. Measured on macOS 27 by the kernel's footprint after bootstrap and `release_freed`: phrost on
-  29 094 files went from 175 MB to 160 MB (peak 204 to 199, indexing 1.26 s to 1.17 s); orthra on
-  the helix checkout from 28 MB to 14 MB and on the phrost checkout from 19 MB to 15 MB. Both
-  servers' test suites pass with it. The `mimalloc` feature now selects mimalloc v2: v3 left 207 MB
-  on phrost where v2 left 160 MB. The template turns `override` on. In the same runs `ps`'s RSS rose
-  from 186 MB to 223 MB, which is what made mimalloc look worse when it was first tried; see perf.
 - `just test`, `just accept` and CI run with `--all-features`, so lspkit-text's `lsp` tests and
   lspkit-heap's `override` test run. The `lsp` tests had run only when asked for by hand.
+- `just bench` times the hot paths: lspkit-text's index, edits and column conversions, and
+  lspkit-runtime's message loop on the workloads the 0.1.0 entry measured, the scenarios the figures
+  above were taken from.
 
 ## 0.1.0 (2026-11-06)
 
