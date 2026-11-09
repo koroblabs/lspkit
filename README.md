@@ -12,20 +12,20 @@ least one of them.
 
 ## Crates
 
-| Crate                              | Purpose                                                                    |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| [`lspkit-runtime`](crates/runtime) | The `LanguageServer` trait, JSON-RPC, and the message loop over stdio.     |
-| [`lspkit-text`](crates/text)       | Line index, UTF-8/UTF-16 columns, applying a client's edits.               |
-| [`lspkit-heap`](crates/heap)       | Global allocator that gives large freed blocks back to the OS and counts.  |
-| [`lspkit-walk`](crates/walk)       | Parallel, deterministic walk of a project's files that respects gitignore. |
-| [`lspkit-flow`](crates/flow)       | Drives a server in process for integration tests.                          |
-| [`lspkit-fixture`](crates/fixture) | Multi-file test fixtures in one string, with cursor markers.               |
-| [`lspkit-fuzz`](crates/fuzz)       | Seeded random edits to check incremental results against a fresh rebuild.  |
-| [`lspkit-arch`](crates/arch)       | Dependency and filesystem-access rules for a workspace, checked as tests.  |
-| [`lspkit-perf`](crates/perf)       | Percentiles, resident memory and latency budgets for a `perf` command.     |
-| [`lspkit-ratchet`](crates/ratchet) | Per-code finding counts against a baseline that may only go down.          |
-| [`lspkit-memsize`](crates/memsize) | Heap size of data structures, for memory reports.                          |
-| [`lspkit-arena`](crates/arena)     | Typed arenas with `u32` ids.                                               |
+| Crate                              | Purpose                                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------- |
+| [`lspkit-runtime`](crates/runtime) | The `LanguageServer` trait, JSON-RPC, and the message loop over stdio.      |
+| [`lspkit-text`](crates/text)       | Line index, UTF-8/UTF-16 columns, applying a client's edits.                |
+| [`lspkit-heap`](crates/heap)       | Global allocator that gives freed memory back to the OS and counts it.      |
+| [`lspkit-walk`](crates/walk)       | Parallel, deterministic walk of a project's files that respects gitignore.  |
+| [`lspkit-flow`](crates/flow)       | Drives a server in process for integration tests.                           |
+| [`lspkit-fixture`](crates/fixture) | Multi-file test fixtures in one string, with cursor markers.                |
+| [`lspkit-fuzz`](crates/fuzz)       | Seeded random edits to check incremental results against a fresh rebuild.   |
+| [`lspkit-arch`](crates/arch)       | Dependency and filesystem-access rules for a workspace, checked as tests.   |
+| [`lspkit-perf`](crates/perf)       | Percentiles, the process's memory and latency budgets for a `perf` command. |
+| [`lspkit-ratchet`](crates/ratchet) | Per-code finding counts against a baseline that may only go down.           |
+| [`lspkit-memsize`](crates/memsize) | Heap size of data structures, for memory reports.                           |
+| [`lspkit-arena`](crates/arena)     | Typed arenas with `u32` ids.                                                |
 
 The crates do not depend on each other, except `lspkit-flow` on `lspkit-runtime`.
 

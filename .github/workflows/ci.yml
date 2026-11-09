@@ -58,7 +58,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: install cargo-nextest
         run: curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "$HOME/.cargo/bin"
-      - run: cargo nextest run --workspace
+      - run: cargo nextest run --workspace --all-features
 
   # Builds the API docs as docs.rs would and runs their examples, including each crate's README.
   # nextest does not run doctests, so without this job a broken example would go unnoticed.

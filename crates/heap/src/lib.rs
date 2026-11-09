@@ -12,6 +12,26 @@
 //! files both measured worse. On macOS 26, `malloc_zone_pressure_relief` returns 0 bytes against
 //! xzone and the 92 MB stays.
 //!
+//! The small blocks are the other two thirds, and the system allocator keeps those too once they
+//! are freed: a parser written in C frees its trees into it, and on macOS nothing asks it to give
+//! them back. The `override` feature makes mimalloc the process's `malloc`, so [`release_freed`]
+//! collects them. What that changed, measured with the kernel's own accounting (`footprint`,
+//! which `lspkit_perf::rss` reads on macOS; `ps`'s RSS still counts pages the kernel has been
+//! told it may take, so it never falls):
+//!
+//! | After bootstrap, then `release_freed`      | `Heap` over macOS malloc | `Heap` with `override` |
+//! | ------------------------------------------ | -----------------------: | ---------------------: |
+//! | phrost, 29 094 files: footprint            |                   175 MB |                 160 MB |
+//! | phrost: peak footprint                     |                   204 MB |                 199 MB |
+//! | phrost: indexing time                      |                   1.26 s |                 1.17 s |
+//! | orthra, helix checkout: footprint          |                    28 MB |                  14 MB |
+//! | orthra, phrost checkout: footprint         |                    19 MB |                  15 MB |
+//! | synthetic bootstrap, everything then freed |                    28 MB |                   2 MB |
+//! | synthetic, allocation-heavy work           |                      1 x |       1.7 to 2.5 x faster |
+//!
+//! In the same runs `ps`'s RSS rose from 186 MB to 223 MB on phrost, which is what made mimalloc
+//! look worse when it was first tried. Both servers' test suites pass with it.
+//!
 //! [`Heap`] handles large blocks itself:
 //!
 //! - Allocations under [`LARGE`] go to the system allocator unchanged. It is tuned for them.
@@ -168,7 +188,8 @@ unsafe impl GlobalAlloc for Heap {
 /// The count is every large block [`Heap`] kept for reuse, plus what the system allocator reports.
 /// The system allocator is asked too: glibc's `malloc_trim`, macOS's pressure relief, and
 /// mimalloc's collect with the `mimalloc` feature. Only macOS reports a number, and on macOS 26
-/// xzone reports 0 and releases nothing.
+/// xzone reports 0 and releases nothing; mimalloc releases but reports nothing usable (see
+/// `release_system`), so with it the count understates what left. The process's footprint says.
 ///
 /// This walks the allocators' caches and costs milliseconds, so keep it off request paths. Call it
 /// after freeing a lot at once, such as after bootstrap or after unloading a model. Other threads
@@ -182,7 +203,11 @@ pub fn release_freed() -> usize {
 ///
 /// The `mimalloc` feature adds a call instead of replacing the platform's. Features are unified
 /// across a build, so another crate can turn it on in a test binary that installs [`Heap`] over
-/// glibc, and glibc must still be trimmed then.
+/// glibc, and glibc must still be trimmed then. What mimalloc gives back is not in the count: the
+/// figure it reports is what it has committed, and a page it purges with `MADV_FREE_REUSABLE` or
+/// `MADV_DONTNEED` stays committed in that figure. In a test freeing 64 MB it fell by 512 KB while
+/// the process's footprint fell by the 64 MB (`tests/allocator.rs` measures the footprint for
+/// that reason).
 fn release_system() -> usize {
     #[cfg(feature = "mimalloc")]
     // SAFETY: `mi_collect` takes a flag and touches only mimalloc's own heaps.

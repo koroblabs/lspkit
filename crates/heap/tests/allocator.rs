@@ -234,3 +234,89 @@ fn work_done_and_undone_leaves_the_live_bytes_where_they_were() {
         after.small
     );
 }
+
+/// The bytes this process costs the machine: the physical footprint on macOS, where the resident
+/// set still counts pages the kernel has been told it may take, and the resident set on Linux,
+/// where `MADV_DONTNEED` drops them from it at once.
+#[cfg(feature = "override")]
+fn footprint() -> Option<usize> {
+    #[cfg(target_os = "macos")]
+    {
+        /// `rusage_info_v0`: a uuid, then eight figures, the last two the resident set and the
+        /// physical footprint.
+        #[repr(C)]
+        struct RusageV0 {
+            uuid: [u8; 16],
+            fields: [u64; 8],
+        }
+        unsafe extern "C" {
+            fn proc_pid_rusage(pid: i32, flavor: i32, buffer: *mut RusageV0) -> i32;
+        }
+        let mut info = RusageV0 {
+            uuid: [0; 16],
+            fields: [0; 8],
+        };
+        // SAFETY: flavor 0 fills exactly a `rusage_info_v0`, which `info` is.
+        let ok = unsafe { proc_pid_rusage(std::process::id() as i32, 0, &mut info) };
+        (ok == 0).then(|| info.fields[7] as usize)
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        let kib: usize = status
+            .lines()
+            .find(|line| line.starts_with("VmRSS:"))?
+            .split_whitespace()
+            .nth(1)?
+            .parse()
+            .ok()?;
+        Some(kib * 1024)
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    None
+}
+
+/// With mimalloc under `Heap`, what a C library frees leaves the process too: the system
+/// allocator's blocks are mimalloc's, and `release_freed` collects them. Measured on the process,
+/// since mimalloc reports nothing usable about what it purged (see `release_system`).
+#[cfg(feature = "override")]
+#[test]
+fn small_blocks_a_c_library_freed_leave_the_process() {
+    let _turn = turn();
+    unsafe extern "C" {
+        fn malloc(size: usize) -> *mut core::ffi::c_void;
+        fn free(ptr: *mut core::ffi::c_void);
+    }
+    let Some(before) = footprint() else {
+        return;
+    };
+    // 64 MB in blocks of 1 KB, touched, as a parser's tree would be; then freed.
+    let blocks: Vec<*mut u8> = (0..64 * 1024)
+        .map(|i| {
+            // SAFETY: a fresh block of 1 KB, written within its size.
+            unsafe {
+                let block = malloc(1024).cast::<u8>();
+                assert!(!block.is_null());
+                block.write_bytes(i as u8, 1024);
+                block
+            }
+        })
+        .collect();
+    let held = footprint().unwrap();
+    assert!(
+        held >= before + 60 * 1024 * 1024,
+        "{} MB more after allocating 64 MB",
+        (held - before) / (1024 * 1024)
+    );
+    for block in blocks {
+        // SAFETY: a block `malloc` returned, freed once.
+        unsafe { free(block.cast()) };
+    }
+    release_freed();
+    let after = footprint().unwrap();
+    assert!(
+        after <= before + 8 * 1024 * 1024,
+        "{} MB still held of the 64 MB freed",
+        after.saturating_sub(before) / (1024 * 1024)
+    );
+}

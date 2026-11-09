@@ -36,7 +36,8 @@ generate() {
   done < <(find "$dir" -type f -print0)
 
   if [[ "$source" == path ]]; then
-    sed -i.bak -E "s#^(lspkit-([a-z]+)) = \\{ git = \"[^\"]+\", rev = \"LSPKIT_REV\" \\}#\\1 = { path = \"$here/crates/\\2\" }#" \
+    # A dependency's features (`lspkit-heap`'s `override`) are carried over to the path form.
+    sed -i.bak -E "s#^(lspkit-([a-z]+)) = \\{ git = \"[^\"]+\", rev = \"LSPKIT_REV\"(, features = \\[[^]]*\\])? \\}#\\1 = { path = \"$here/crates/\\2\"\\3 }#" \
       "$dir/Cargo.toml" && rm -f "$dir/Cargo.toml.bak"
   else
     local rev

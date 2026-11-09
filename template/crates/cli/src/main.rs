@@ -8,7 +8,9 @@ mod ratchet;
 
 /// Counts every allocation, takes large blocks from the operating system through a bounded cache,
 /// and leaves small ones to the system allocator (see `lspkit_heap::Heap`). A freed parse buffer's
-/// memory is then returned on every platform, which system allocators do not guarantee.
+/// memory is then returned on every platform, which system allocators do not guarantee. With
+/// lspkit-heap's `override` feature (on in `Cargo.toml`), the system allocator is mimalloc for the
+/// whole process, so `release_freed` gives back what a parser written in C freed as well.
 #[global_allocator]
 static HEAP: lspkit_heap::Heap = lspkit_heap::Heap;
 

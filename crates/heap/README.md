@@ -47,8 +47,13 @@ installed it, such as this example.
   allocations are counted in per-thread shards so indexing threads do not contend for a cache line.
 - `release_freed()` costs milliseconds. Call it after freeing a lot at once, never on a request
   path.
-- The `mimalloc` feature is for targets such as musl, whose allocator neither returns memory nor can
-  be asked to. It assumes the binary installs mimalloc.
+- The `override` feature makes mimalloc (v2) the process's `malloc`, under `Heap`'s small
+  allocations and under every C library in the binary, and `release_freed()` collects what they
+  freed. Measured on macOS 27 with the kernel's footprint, which `lspkit_perf::rss` reads there:
+  after indexing 29 094 files, phrost went from 175 MB to 160 MB and orthra on the helix checkout
+  from 28 MB to 14 MB, and allocation-heavy work ran up to twice as fast. `ps`'s RSS does not show
+  it: it counts pages the kernel has been told it may take. The `mimalloc` feature alone only asks
+  mimalloc to collect, for a binary that installs it itself.
 
 Part of [lspkit](../../README.md), a toolkit for language servers.
 

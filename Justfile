@@ -1,18 +1,19 @@
 # `just --list` shows every recipe. Run `just pr-ready` before asking for review.
 
-# Full test suite.
+# Full test suite, with every feature: lspkit-text's `lsp` tests and lspkit-heap's `override` test
+# are behind one.
 test:
-    cargo nextest run --workspace
+    cargo nextest run --workspace --all-features
 
 # Tests for one crate, optionally filtered by name.
 test-one crate filter="":
-    cargo nextest run -p {{crate}} {{filter}}
+    cargo nextest run -p {{crate}} --all-features {{filter}}
 
 # Accept new snapshot output, for the workspace or one crate. Read the diff before committing it.
 # Uses `cargo test`, not nextest: nextest runs one process per test, and tests accepting into the
 # same file overwrite each other (`docs/working.md`, "Hazards").
 accept crate="":
-    UPDATE_EXPECT=1 cargo test {{ if crate == "" { "--workspace" } else { "-p " + crate } }}
+    UPDATE_EXPECT=1 cargo test --all-features {{ if crate == "" { "--workspace" } else { "-p " + crate } }}
 
 [doc("The boundaries: allowed edges, foreign engines, filesystem reads on the request path.")]
 arch:

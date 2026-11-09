@@ -11,10 +11,17 @@ description = "A global allocator for language servers that returns large freed 
 readme = "README.md"
 
 [features]
-# For targets such as musl, whose allocator neither returns memory nor can be asked to. Pairs
-# with a binary that installs mimalloc (phrost-cli's `mimalloc` feature), which this asks to
-# collect.
-mimalloc = ["dep:libmimalloc-sys", "libmimalloc-sys/extended"]
+# Asks mimalloc to collect in `release_freed`, for a binary that has mimalloc in it: through
+# `override` below, or because it installs mimalloc as its global allocator itself. Version 2 of
+# mimalloc, not the crate's default 3: measured in phrost after indexing 29 094 files (macOS 27,
+# 2026-11-09), v3 left a footprint of 207 MB where v2 left 160 MB, and peaked at 280 MB against
+# 200 MB, with the same indexing time.
+mimalloc = ["dep:libmimalloc-sys", "libmimalloc-sys/extended", "libmimalloc-sys/v2"]
+# mimalloc as the process's `malloc`: under `Heap`'s small allocations, and under every C library
+# in the binary, such as a parser. `release_freed` then collects what they freed too, which macOS's
+# allocator never gives back (see the crate docs). On Windows the C library keeps its own malloc,
+# since mimalloc overrides it only in a shared build.
+override = ["mimalloc", "libmimalloc-sys/override"]
 
 [dependencies]
 libmimalloc-sys = { version = "0.1.49", optional = true }
