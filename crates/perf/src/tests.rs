@@ -82,3 +82,28 @@ fn this_process_has_a_resident_size() {
     assert!(bytes > 0);
     assert!(rss::format(bytes).ends_with(" MB"));
 }
+
+#[test]
+fn reads_the_footprint_in_the_macos_tools_report() {
+    use crate::rss::parse_footprint;
+    let report =
+        "zsh [62753]: 64-bit    Footprint: 2621848 B (16384 bytes per page)\n=====\n  Dirty";
+    assert_eq!(parse_footprint(report), Some(2_621_848));
+    assert_eq!(
+        parse_footprint("Footprint: 2576 KB (16384 bytes per page)"),
+        Some(2576 * 1024)
+    );
+    assert_eq!(
+        parse_footprint("phrost [1]: 64-bit    Footprint: 237.5 MB (16384 bytes per page)"),
+        Some(237 * 1024 * 1024 + 512 * 1024)
+    );
+    assert_eq!(parse_footprint("Footprint: 1 GB"), Some(1 << 30));
+    assert_eq!(parse_footprint("Footprint: 12 pages"), None);
+    assert_eq!(parse_footprint("no such line"), None);
+}
+
+#[test]
+fn measures_this_process() {
+    // Every platform CI and the servers run on reports something, and a test binary is over 1 MB.
+    assert!(crate::rss::current().is_some_and(|bytes| bytes > 1 << 20));
+}

@@ -19,6 +19,11 @@ each entry lists what a dependent has to change.
   of boxing it. Under a counting allocator, 2 000 small requests answered at once took 3.8 ms
   instead of 4.7, with 30 000 allocations instead of 38 000; a message dominated by its payload
   costs the same.
+- perf: `rss::current` reports the physical footprint on macOS, from the system's `footprint` tool,
+  instead of `ps`'s resident set, which keeps counting pages an allocator has given back with
+  `MADV_FREE_REUSABLE`. In one test the process stood at 150 MB of RSS and 47 MB of footprint, and
+  the kernel reported the other 101 MB as reusable. Linux still reads `VmRSS`. A server's memory
+  budgets on macOS now judge what the machine actually gives up.
 
 ## 0.1.0 (2026-11-06)
 

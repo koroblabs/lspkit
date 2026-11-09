@@ -35,8 +35,9 @@ assert_eq!(over.to_string(), "over budget: hover p95");
 - `Samples` also counts how many requests answered and records where the worst one was.
 - A budget for something the server does not do yet is listed as `unimplemented` instead of left
   out, since a report covering three of six rows reads as if all six were within budget.
-- `rss::current` reads the process's resident memory as the operating system counts it, or returns
-  `None` where it cannot.
+- `rss::current` reads the process's memory as the operating system charges it (`VmRSS` on Linux,
+  the physical footprint on macOS, where the resident set keeps counting pages an allocator has
+  given back), or returns `None` where it cannot.
 
 Part of [lspkit](../../README.md), a toolkit for language servers.
 
