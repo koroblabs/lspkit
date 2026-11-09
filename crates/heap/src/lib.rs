@@ -30,7 +30,10 @@
 //! | synthetic, allocation-heavy work           |                      1 x |       1.7 to 2.5 x faster |
 //!
 //! In the same runs `ps`'s RSS rose from 186 MB to 223 MB on phrost, which is what made mimalloc
-//! look worse when it was first tried. Both servers' test suites pass with it.
+//! look worse when it was first tried. Both servers' test suites pass with it. It is a macOS
+//! remedy: on Linux, glibc gives a C library's freed blocks back by itself, and with `override`
+//! orthra measured 4.5 MB more RSS per project there, mimalloc's own reserve. A server takes the
+//! feature in a `[target.'cfg(target_os = "macos")'.dependencies]` table, as the template does.
 //!
 //! [`Heap`] handles large blocks itself:
 //!

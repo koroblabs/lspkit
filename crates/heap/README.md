@@ -52,8 +52,10 @@ installed it, such as this example.
   freed. Measured on macOS 27 with the kernel's footprint, which `lspkit_perf::rss` reads there:
   after indexing 29 094 files, phrost went from 175 MB to 160 MB and orthra on the helix checkout
   from 28 MB to 14 MB, and allocation-heavy work ran up to twice as fast. `ps`'s RSS does not show
-  it: it counts pages the kernel has been told it may take. The `mimalloc` feature alone only asks
-  mimalloc to collect, for a binary that installs it itself.
+  it: it counts pages the kernel has been told it may take. Take it for macOS only: on Linux glibc
+  gives a C library's freed blocks back by itself, and orthra measured 4.5 MB more RSS per project
+  with mimalloc there. The `mimalloc` feature alone only asks mimalloc to collect, for a binary that
+  installs it itself.
 
 Part of [lspkit](../../README.md), a toolkit for language servers.
 

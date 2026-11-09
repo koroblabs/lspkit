@@ -20,6 +20,13 @@ lspkit-ratchet.workspace = true
 lspkit-walk.workspace = true
 tokio = { workspace = true, features = ["io-std", "macros", "rt-multi-thread"] }
 
+# `override` puts mimalloc under `Heap` and under every C library in the binary, so `release_freed`
+# gives back what they freed too. On macOS, where nothing else asks the system allocator for them,
+# it took orthra from 28 MB to 14 MB; on Linux, glibc gives them back already and mimalloc's own
+# reserve costs about 4.5 MB per project, so Linux stays on glibc. Measured in lspkit-heap's docs.
+[target.'cfg(target_os = "macos")'.dependencies]
+lspkit-heap = { workspace = true, features = ["override"] }
+
 [dev-dependencies]
 tempfile = "3"
 

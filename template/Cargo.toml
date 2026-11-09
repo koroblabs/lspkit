@@ -27,9 +27,9 @@ lspkit-arch = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_R
 lspkit-fixture = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
 lspkit-flow = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
 lspkit-fuzz = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
-# `override`: mimalloc as the process's malloc under `Heap`, so what a C library frees leaves the
-# process too; measured in lspkit-heap's docs.
-lspkit-heap = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV", features = ["override"] }
+# Its `override` feature (mimalloc as the process's malloc under `Heap`, so what a C library frees
+# leaves the process too) is taken for macOS only, in `crates/cli/Cargo.toml`.
+lspkit-heap = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
 lspkit-perf = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
 lspkit-ratchet = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }
 lspkit-runtime = { git = "https://github.com/koroblabs/lspkit.git", rev = "LSPKIT_REV" }

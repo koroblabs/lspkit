@@ -3,6 +3,15 @@
 lspkit is used from git at a pinned revision. Versions are tags. Any 0.x version may change the API;
 each entry lists what a dependent has to change.
 
+## Unreleased
+
+### Changed
+
+- heap, template: `override` is for macOS. On Linux glibc gives a C library's freed blocks back by
+  itself, and orthra measured 4.5 MB more RSS per project with mimalloc as the process's `malloc`
+  there. The template takes the feature in its binary crate's
+  `[target.'cfg(target_os = "macos")'.dependencies]` table, and a server does the same.
+
 ## 0.1.1 (2026-11-09)
 
 No API changed. A server takes the heap crate's `override` feature in its binary crate's features

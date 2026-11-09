@@ -106,9 +106,11 @@ Each one cost a session, and none of them is discoverable before it bites.
   should come and go -- a closed buffer, an unloaded model -- has a test that the live bytes
   (`lspkit_heap::stats()`) are back where they were after it went. A leak is a logic bug the
   allocator cannot fix; counting is what makes it a failing test instead of a slow climb. Take the
-  crate's `override` feature too, so what a parser written in C freed leaves the process, and read
-  memory as the kernel charges it: `lspkit_perf::rss` reports the footprint on macOS, where `ps`'s
-  RSS keeps counting pages the allocator has already given back and so never falls.
+  crate's `override` feature on macOS, so what a parser written in C freed leaves the process, and
+  only there: on Linux glibc already gives it back and mimalloc's reserve measured 4.5 MB more per
+  project in orthra. Read memory as the kernel charges it: `lspkit_perf::rss` reports the footprint
+  on macOS, where `ps`'s RSS keeps counting pages the allocator has already given back and so never
+  falls.
 - **Every server has `check --ratchet`** (`lspkit-ratchet`): its findings counted by code against a
   baseline that only goes down. It is what makes a strict check liveable, and a code nothing has
   agreed to fails it, so a new check is a decision somebody reads in a diff.
