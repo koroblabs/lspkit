@@ -13,8 +13,9 @@ fn check(stream: &str, largest: usize, expected: Expect) {
         .block_on(async {
             let mut reader = BufReader::new(stream.as_bytes());
             let mut outcomes = String::new();
+            let mut line = String::new();
             loop {
-                let outcome = read_within(&mut reader, largest).await;
+                let outcome = read_within(&mut reader, largest, &mut line).await;
                 let line = match &outcome {
                     Ok(Message::Request(request)) => format!("request {}", request.method()),
                     Ok(Message::Response(response)) => format!("response {:?}", response.id()),

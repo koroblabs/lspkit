@@ -1,6 +1,8 @@
 //! The base protocol's framing: a `Content-Length` header, a blank line, and that many bytes of
 //! JSON.
 
+use std::io::Write as _;
+
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt};
 
 use crate::jsonrpc::Message;
@@ -33,24 +35,28 @@ pub(crate) enum Unread {
     Malformed(String),
 }
 
-/// Reads the next message, or says why there is none.
-pub(crate) async fn read<R: AsyncBufRead + Unpin>(reader: &mut R) -> Result<Message, Unread> {
-    read_within(reader, LARGEST).await
+/// Reads the next message, or says why there is none. `line` is the buffer the header lines are
+/// read into; the caller keeps it across messages, so a header costs no allocation.
+pub(crate) async fn read<R: AsyncBufRead + Unpin>(
+    reader: &mut R,
+    line: &mut String,
+) -> Result<Message, Unread> {
+    read_within(reader, LARGEST, line).await
 }
 
 /// [`read`] with the size limit as a parameter, so a test can reach it.
 async fn read_within<R: AsyncBufRead + Unpin>(
     reader: &mut R,
     largest: usize,
+    line: &mut String,
 ) -> Result<Message, Unread> {
     let mut length: Option<usize> = None;
     let mut headers = false;
-    let mut line = String::new();
     loop {
         line.clear();
         let read = (&mut *reader)
             .take(HEADER_LINE)
-            .read_line(&mut line)
+            .read_line(line)
             .await
             .map_err(|_| Unread::Closed)?;
         if read == 0 {
@@ -148,8 +154,18 @@ pub(crate) fn frame(message: &Message) -> Frame {
     let mut bytes = Vec::with_capacity(HEADER_ROOM + message.size_hint());
     bytes.resize(HEADER_ROOM, 0);
     message.write_json(&mut bytes);
-    let header = format!("Content-Length: {}\r\n\r\n", bytes.len() - HEADER_ROOM);
-    let start = HEADER_ROOM - header.len();
-    bytes[start..HEADER_ROOM].copy_from_slice(header.as_bytes());
+    // The header is formatted on the stack and copied into the end of its room. A `String` for it
+    // was an allocation on every message written.
+    let mut header = [0u8; HEADER_ROOM];
+    let mut room: &mut [u8] = &mut header;
+    write!(
+        room,
+        "Content-Length: {}\r\n\r\n",
+        bytes.len() - HEADER_ROOM
+    )
+    .expect("the room fits the longest length");
+    let written = HEADER_ROOM - room.len();
+    let start = HEADER_ROOM - written;
+    bytes[start..HEADER_ROOM].copy_from_slice(&header[..written]);
     Frame { bytes, start }
 }

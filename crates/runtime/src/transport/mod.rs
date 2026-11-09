@@ -148,8 +148,9 @@ where
     // reading on would leave a server that never exits (orthra hit this).
     let reader = tokio::spawn(async move {
         let mut stdin = BufReader::new(stdin);
+        let mut line = String::new();
         loop {
-            let message = codec::read(&mut stdin).await;
+            let message = codec::read(&mut stdin, &mut line).await;
             if let Ok(Message::Response(response)) = message {
                 let _ = answers.send(response).await;
                 continue;

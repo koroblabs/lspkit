@@ -68,7 +68,10 @@ impl Panic {
     /// diagnostics task panicked, the server answered everything else normally and the buffer
     /// showed no findings, which looks the same as a clean file.
     pub async fn watching<T>(work: impl Future<Output = T> + Send) -> Result<T, Self> {
-        Caught::over(Box::pin(work)).await
+        // Pinned to this frame rather than boxed. The futures that reach it from the loop are boxed
+        // already, and a second box was an allocation on every request and every notification.
+        let work = std::pin::pin!(work);
+        Caught::over(work).await
     }
 
     /// Turns a `catch_unwind` payload into a printable panic.
@@ -171,7 +174,8 @@ where
 /// A future that returns its inner future's panic instead of propagating it.
 ///
 /// It requires `Unpin` instead of a pin projection, because `#![forbid(unsafe_code)]` rules out
-/// writing one by hand. Every future it wraps is boxed, and so `Unpin`.
+/// writing one by hand. [`Panic::watching`] pins the future to its own frame, and a `Pin<&mut F>`
+/// is `Unpin`.
 struct Caught<F> {
     inner: F,
     /// Set once the inner future unwound out of `poll`.

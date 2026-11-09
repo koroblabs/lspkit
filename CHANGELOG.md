@@ -13,6 +13,12 @@ each entry lists what a dependent has to change.
   offset from 1.15 µs to 0.26 (UTF-32: 0.05); an edit in the middle of a 1 MB file from 226 µs to
   216 and at its end from 408 to 390, with no allocation. Building an index costs the same, and the
   index no longer keeps spare capacity.
+- runtime: four allocations fewer per message. The `Content-Length` header is formatted on the
+  stack, header lines are read into one reused buffer, a request's method is borrowed as the
+  protocol's own `'static` name instead of a `String`, and the panic watcher pins its future instead
+  of boxing it. Under a counting allocator, 2 000 small requests answered at once took 3.8 ms
+  instead of 4.7, with 30 000 allocations instead of 38 000; a message dominated by its payload
+  costs the same.
 
 ## 0.1.0 (2026-11-06)
 

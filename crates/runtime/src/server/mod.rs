@@ -7,6 +7,7 @@ mod service;
 mod socket;
 mod state;
 
+pub(crate) use self::methods::known;
 pub use self::{
     client::Client,
     methods::LanguageServer,

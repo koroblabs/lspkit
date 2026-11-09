@@ -65,6 +65,26 @@ macro_rules! methods {
             )*
         }
 
+        /// `method` as the `'static` name the protocol defines, or `None` for a method outside the
+        /// protocol. `jsonrpc::Message::parse` borrows a request's method through this instead of
+        /// allocating a `String` for it on every message read.
+        pub(crate) fn known(method: &str) -> Option<&'static str> {
+            Some(match method {
+                "initialize" => "initialize",
+                "initialized" => "initialized",
+                "shutdown" => "shutdown",
+                "exit" => "exit",
+                "$/cancelRequest" => "$/cancelRequest",
+                "$/setTrace" => "$/setTrace",
+                "$/logTrace" => "$/logTrace",
+                "$/progress" => "$/progress",
+                "window/workDoneProgress/cancel" => "window/workDoneProgress/cancel",
+                $( $request => $request, )*
+                $( $notification => $notification, )*
+                _ => return None,
+            })
+        }
+
         /// The future answering request `method`, or `params` back when the protocol has no such
         /// request. Returning them lets a custom method take them without cloning every request's
         /// parameters up front.

@@ -197,7 +197,9 @@ async fn an_edit_has_landed_before_the_request_sent_after_it_is_answered() {
     let mut server_said = BufReader::new(server_said);
     let mut answers = Vec::new();
     while answers.len() < 2 {
-        if let Ok(Message::Response(response)) = codec::read(&mut server_said).await {
+        if let Ok(Message::Response(response)) =
+            codec::read(&mut server_said, &mut String::new()).await
+        {
             answers.push(said(Some(response)));
         }
     }
