@@ -3,7 +3,12 @@
 lspkit is used from git at a pinned revision. Versions are tags. Any 0.x version may change the API;
 each entry lists what a dependent has to change.
 
-## Unreleased
+## 0.1.1 (2026-11-09)
+
+No API changed. A server takes the heap crate's `override` feature in its binary crate's features
+(`lspkit-heap/override`) to get the memory figures below; a server that installed mimalloc as its
+global allocator itself drops that in favor of it. A server's memory budgets on macOS now judge the
+footprint, so a budget written against `ps`'s RSS may have room to come down.
 
 ### Changed
 

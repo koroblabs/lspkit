@@ -289,7 +289,7 @@ dependencies = [
 
 [[package]]
 name = "lspkit-arch"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "tempfile",
@@ -298,11 +298,11 @@ dependencies = [
 
 [[package]]
 name = "lspkit-arena"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "lspkit-fixture"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "text-size",
@@ -310,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "lspkit-flow"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "futures-util",
@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "lspkit-fuzz"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "text-size",
@@ -329,25 +329,25 @@ dependencies = [
 
 [[package]]
 name = "lspkit-heap"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libmimalloc-sys",
 ]
 
 [[package]]
 name = "lspkit-memsize"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "lspkit-perf"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
 ]
 
 [[package]]
 name = "lspkit-ratchet"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "tempfile",
@@ -356,7 +356,7 @@ dependencies = [
 
 [[package]]
 name = "lspkit-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "futures-util",
@@ -368,7 +368,7 @@ dependencies = [
 
 [[package]]
 name = "lspkit-text"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "expect-test",
  "ls-types",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "lspkit-walk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ignore",
  "tempfile",
