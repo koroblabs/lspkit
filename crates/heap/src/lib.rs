@@ -32,8 +32,16 @@
 //! In the same runs `ps`'s RSS rose from 186 MB to 223 MB on phrost, which is what made mimalloc
 //! look worse when it was first tried. Both servers' test suites pass with it. It is a macOS
 //! remedy: on Linux, glibc gives a C library's freed blocks back by itself, and with `override`
-//! orthra measured 4.5 MB more RSS per project there, mimalloc's own reserve. A server takes the
-//! feature in a `[target.'cfg(target_os = "macos")'.dependencies]` table, as the template does.
+//! orthra measured 4.5 to 5 MB more RSS per project there: 3.6 MB of it transparent huge pages on
+//! a host with THP `always` (`MIMALLOC_ALLOW_THP=0` took them back), the rest mimalloc's reserve.
+//! A server takes the feature in a `[target.'cfg(target_os = "macos")'.dependencies]` table, as
+//! the template does.
+//!
+//! With the feature, `Heap` also sets one mimalloc option before `main`: `abandoned_page_purge`,
+//! so a thread that exits purges the pages it freed instead of leaving them committed in the
+//! segments its live data still holds. phrost's indexing threads exit after bootstrap, and the
+//! footprint after bootstrap went from 152-156 MB to 137-138, the peak from 193-196 to 173-174,
+//! with the same indexing time; see `MI_OPTION_ABANDONED_PAGE_PURGE`.
 //!
 //! [`Heap`] handles large blocks itself:
 //!
@@ -235,6 +243,50 @@ fn release_platform() -> usize {
     }
     #[cfg(not(any(target_os = "macos", all(target_os = "linux", target_env = "gnu"))))]
     0
+}
+
+/// mimalloc's `abandoned_page_purge`, by its index in mimalloc v2's `mi_option_e`; the bindings
+/// leave it out, and name `eager_commit_delay` (14) and `use_numa_nodes` (16) either side of
+/// `purge_delay` (15), which the assertion below holds them to. A thread that exits leaves the
+/// segments still holding its live data to mimalloc, and with them the pages it freed: those are
+/// purged once their delay (10 ms, extended by every further free) has passed, and for pages freed
+/// in the moments before the exit that is never, since nothing in an abandoned segment runs the
+/// clock. With the option, the exiting thread purges them itself. In phrost the indexing threads
+/// exit after bootstrap and left 15-18 MB this way: footprint after bootstrap 152-156 MB against
+/// 137-138 with it, peak 193-196 against 173-174, the same indexing time (macOS 27, 2026-11-09).
+/// orthra, whose threads keep nothing, measured the same with and without. `purge_delay` at 1 ms
+/// instead of 10 measured noise on phrost and 0.5 MB on orthra, and stays.
+#[cfg(feature = "mimalloc")]
+const MI_OPTION_ABANDONED_PAGE_PURGE: libmimalloc_sys::mi_option_t = 12;
+
+#[cfg(feature = "mimalloc")]
+const _: () = assert!(
+    libmimalloc_sys::mi_option_eager_commit_delay == 14
+        && libmimalloc_sys::mi_option_use_numa_nodes == 16,
+    "mimalloc's option table was renumbered; check MI_OPTION_ABANDONED_PAGE_PURGE"
+);
+
+/// Runs before `main`, from the binary's initializer section, so the option is set before any
+/// thread exits. The process cannot put `MIMALLOC_ABANDONED_PAGE_PURGE` in its own environment
+/// in time, and a check on every allocation would be a load on the hot path.
+#[cfg(feature = "mimalloc")]
+#[used]
+#[cfg_attr(
+    target_vendor = "apple",
+    unsafe(link_section = "__DATA,__mod_init_func")
+)]
+#[cfg_attr(
+    any(target_os = "linux", target_os = "android", target_os = "freebsd"),
+    unsafe(link_section = ".init_array")
+)]
+#[cfg_attr(windows, unsafe(link_section = ".CRT$XCU"))]
+static CONFIGURE_MIMALLOC: unsafe extern "C" fn() = configure_mimalloc;
+
+#[cfg(feature = "mimalloc")]
+unsafe extern "C" fn configure_mimalloc() {
+    // SAFETY: writes one entry of mimalloc's static option table, which is valid before mimalloc
+    // has initialized anything else.
+    unsafe { libmimalloc_sys::mi_option_set_enabled(MI_OPTION_ABANDONED_PAGE_PURGE, true) };
 }
 
 #[cfg(target_os = "macos")]

@@ -276,6 +276,47 @@ fn footprint() -> Option<usize> {
     None
 }
 
+/// A thread that exits leaves the segments still holding its live data to mimalloc, and with them
+/// the pages it freed, which mimalloc purges only once their delay has passed; for pages freed in
+/// the moments before the exit, that is never. `Heap` turns `abandoned_page_purge` on before
+/// `main`, so the exiting thread purges them itself. This is what left 15-18 MB in phrost after its
+/// indexing threads exited.
+#[cfg(feature = "override")]
+#[test]
+fn pages_a_thread_freed_before_exiting_leave_the_process() {
+    let _turn = turn();
+    let Some(before) = footprint() else {
+        return;
+    };
+    // 64 MB in blocks of 1 KB on one thread, which keeps one block in every megabyte, as an index
+    // outlives the thread that built it, frees the rest and exits at once. The kept blocks keep
+    // their segments from being freed whole, and every other page in them is free and, with the
+    // option, purged as the thread leaves. (One block kept in sixteen would leave every 64 KiB
+    // page partly live, and nothing to purge.)
+    let kept: Vec<Vec<u8>> = thread::spawn(|| {
+        let blocks: Vec<Vec<u8>> = (0..64 * 1024).map(|i| vec![i as u8; 1024]).collect();
+        blocks.into_iter().step_by(1024).collect()
+    })
+    .join()
+    .expect("the thread finishes");
+    let after = footprint().unwrap();
+    assert!(
+        after <= before + 12 * 1024 * 1024,
+        "{} MB more after the thread exited, 64 KB of it live",
+        after.saturating_sub(before) / (1024 * 1024)
+    );
+    drop(kept);
+}
+
+/// The option is set, by the index this crate names for it.
+#[cfg(feature = "mimalloc")]
+#[test]
+fn mimalloc_is_told_to_purge_what_an_exiting_thread_leaves() {
+    // SAFETY: reads one entry of mimalloc's option table.
+    let set = unsafe { libmimalloc_sys::mi_option_get(12) };
+    assert_eq!(set, 1, "abandoned_page_purge (option 12) is on");
+}
+
 /// With mimalloc under `Heap`, what a C library frees leaves the process too: the system
 /// allocator's blocks are mimalloc's, and `release_freed` collects them. Measured on the process,
 /// since mimalloc reports nothing usable about what it purged (see `release_system`).

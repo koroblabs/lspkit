@@ -53,9 +53,13 @@ installed it, such as this example.
   after indexing 29 094 files, phrost went from 175 MB to 160 MB and orthra on the helix checkout
   from 28 MB to 14 MB, and allocation-heavy work ran up to twice as fast. `ps`'s RSS does not show
   it: it counts pages the kernel has been told it may take. Take it for macOS only: on Linux glibc
-  gives a C library's freed blocks back by itself, and orthra measured 4.5 MB more RSS per project
-  with mimalloc there. The `mimalloc` feature alone only asks mimalloc to collect, for a binary that
-  installs it itself.
+  gives a C library's freed blocks back by itself, and orthra measured 4.5 to 5 MB more RSS per
+  project with mimalloc there, 3.6 MB of it transparent huge pages. The `mimalloc` feature alone
+  only asks mimalloc to collect, for a binary that installs it itself.
+- With either feature, `Heap` sets mimalloc's `abandoned_page_purge` before `main`, so a thread that
+  exits purges the pages it freed instead of leaving them committed in the segments its live data
+  still holds. phrost's indexing threads exit after bootstrap: footprint after bootstrap 152-156 MB
+  to 137-138, peak 193-196 to 173-174, the same indexing time.
 
 Part of [lspkit](../../README.md), a toolkit for language servers.
 
