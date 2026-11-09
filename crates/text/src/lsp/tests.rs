@@ -131,3 +131,61 @@ fn each_change_is_told_in_bytes_of_the_text_before_it() {
     .assert_eq(&told.join("\n"));
     assert_eq!(text, "new");
 }
+
+/// Edits on `\r\n` text, on the last line without a terminator, across lines, and past a line's
+/// end, which LSP reads as the end of the line.
+#[test]
+fn changes_land_on_crlf_text_and_on_the_last_line() {
+    let mut text = "ab\r\ncd\r\nef".to_owned();
+    let mut told = Vec::new();
+    let applied = apply_each(
+        &mut text,
+        vec![
+            // Past the end of line 1: the end of its content, before the `\r\n`.
+            change((1, 9), (1, 9), "!"),
+            // The last line, which has no terminator.
+            change((2, 1), (2, 2), "F"),
+            // Across lines, taking a terminator with it.
+            change((0, 1), (1, 1), "-"),
+        ],
+        Encoding::Utf16,
+        |edit| {
+            if let Edit::Range {
+                before,
+                range,
+                inserted,
+            } = edit
+            {
+                told.push(format!("{range:?} {:?} -> {inserted:?}", &before[range]));
+            }
+        },
+    );
+    assert_eq!(applied, Ok(()));
+    expect![[r#"
+        6..6 "" -> "!"
+        10..11 "f" -> "F"
+        1..5 "b\r\nc" -> "-""#]]
+    .assert_eq(&told.join("\n"));
+    assert_eq!(text, "a-d!\r\neF");
+
+    let mut text = "ab\ncd".to_owned();
+    assert_eq!(
+        apply(
+            &mut text,
+            vec![change((2, 0), (2, 0), "x")],
+            Encoding::Utf16
+        ),
+        Err(OutOfRange),
+        "a line past the end"
+    );
+    assert_eq!(
+        apply(
+            &mut text,
+            vec![change((1, 1), (0, 1), "x")],
+            Encoding::Utf16
+        ),
+        Err(OutOfRange),
+        "a range that ends before it starts"
+    );
+    assert_eq!(text, "ab\ncd");
+}

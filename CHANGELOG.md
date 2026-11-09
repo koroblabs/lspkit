@@ -3,6 +3,17 @@
 lspkit is used from git at a pinned revision. Versions are tags. Any 0.x version may change the API;
 each entry lists what a dependent has to change.
 
+## Unreleased
+
+### Changed
+
+- text: a column is counted from the bytes instead of decoding characters, and an edit's two
+  positions are found in one scan that stores nothing instead of an index built through the edit's
+  line. On a 2 KB Cyrillic line, offset to UTF-16 position went from 0.71 µs to 0.24 and position to
+  offset from 1.15 µs to 0.26 (UTF-32: 0.05); an edit in the middle of a 1 MB file from 226 µs to
+  216 and at its end from 408 to 390, with no allocation. Building an index costs the same, and the
+  index no longer keeps spare capacity.
+
 ## 0.1.0 (2026-11-06)
 
 First public release.

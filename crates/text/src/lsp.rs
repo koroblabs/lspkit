@@ -4,7 +4,9 @@ use ls_types::{
     ClientCapabilities, Position, PositionEncodingKind, Range, TextDocumentContentChangeEvent,
 };
 
-use crate::{Encoding, LineCol, LineIndex, TextRange, TextSize};
+use crate::{
+    Encoding, LineCol, LineIndex, TextRange, TextSize, column_offset, content_bounds, size,
+};
 
 #[cfg(test)]
 mod tests;
@@ -100,19 +102,24 @@ pub fn apply_each(
             *text = change.text;
             continue;
         };
-        let last = range.start.line.max(range.end.line) as usize;
-        let index = LineIndex::through(text, last);
-        let start = offset(&index, text, range.start, encoding).ok_or(OutOfRange)?;
-        let end = offset(&index, text, range.end, encoding).ok_or(OutOfRange)?;
+        // The two lines are found in one scan that stores nothing, so an edit costs no allocation
+        // beyond the text's own growth.
+        let [from, to] =
+            content_bounds(text, range.start.line, range.end.line).ok_or(OutOfRange)?;
+        let start = from.0
+            + column_offset(&text[from.0..from.1], range.start.character, encoding)
+                .ok_or(OutOfRange)?;
+        let end = to.0
+            + column_offset(&text[to.0..to.1], range.end.character, encoding).ok_or(OutOfRange)?;
         if start > end {
             return Err(OutOfRange);
         }
         each(Edit::Range {
             before: text,
-            range: TextRange::new(start, end),
+            range: TextRange::new(size(start), size(end)),
             inserted: &change.text,
         });
-        text.replace_range(usize::from(start)..usize::from(end), &change.text);
+        text.replace_range(start..end, &change.text);
     }
     Ok(())
 }

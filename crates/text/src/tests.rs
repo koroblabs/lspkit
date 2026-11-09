@@ -4,7 +4,7 @@ use std::fmt::Write as _;
 
 use expect_test::expect;
 
-use super::{Encoding, LineCol, LineIndex, TextSize};
+use super::{Encoding, LineCol, LineIndex, TextSize, content_bounds, each_line_start};
 
 const PHP: &str = "<?php\nclass A {\n    public int $x;\n}\n";
 
@@ -297,32 +297,114 @@ fn walked_offset(
     Some(TextSize::try_from(end).unwrap())
 }
 
-/// An index cut off after a line answers every position up to it as the full index does.
-/// `lsp::apply` relies on this to index only as far as its edit.
-#[test]
-fn an_index_through_a_line_agrees_with_the_whole_one_up_to_it() {
-    for text in [
-        MIXED,
-        "\r\r\n\n",
-        "one\ntwo\r\nthree\rfour",
-        "",
-        "no terminator",
-    ] {
-        let whole = LineIndex::new(text);
-        for last in 0..whole.line_count() + 2 {
-            let through = LineIndex::through(text, last);
-            for line in 0..=last as u32 {
-                for col in 0..12 {
-                    for encoding in Encoding::ALL {
-                        let pos = LineCol { line, col };
-                        assert_eq!(
-                            through.offset_in(text, pos, encoding),
-                            whole.offset_in(text, pos, encoding),
-                            "{text:?} through {last}, {pos:?} {encoding:?}"
-                        );
-                    }
-                }
+/// Every text the scanner sees, with all three terminators in every arrangement.
+const TEXTS: [&str; 9] = [
+    MIXED,
+    "\r\r\n\n",
+    "one\ntwo\r\nthree\rfour",
+    "",
+    "no terminator",
+    "\r",
+    "\n\n\n",
+    "x\r\n\r\ny\r",
+    "ascii then ü then ascii\r\nПривіт 👋 world\n",
+];
+
+/// Line starts a byte at a time, the way the merged searches must agree with.
+fn starts_byte_by_byte(text: &str) -> Vec<usize> {
+    let bytes = text.as_bytes();
+    let mut starts = vec![0];
+    let mut at = 0;
+    while at < bytes.len() {
+        match bytes[at] {
+            b'\r' if bytes.get(at + 1) == Some(&b'\n') => at += 2,
+            b'\r' | b'\n' => at += 1,
+            _ => {
+                at += 1;
+                continue;
             }
+        }
+        starts.push(at);
+    }
+    starts
+}
+
+/// The line starts the scan yields, with the first line's 0 in front, as an index stores them.
+fn scanned_starts(text: &str) -> Vec<usize> {
+    let mut starts = vec![0];
+    each_line_start(text, |start| {
+        starts.push(start);
+        true
+    });
+    starts
+}
+
+#[test]
+fn the_scan_finds_every_line_start_and_stops_when_told() {
+    for text in TEXTS {
+        assert_eq!(scanned_starts(text), starts_byte_by_byte(text), "{text:?}");
+    }
+    // Long enough for the search to run over many SIMD blocks, with a `\r` late in the text.
+    let long = "line of text\n".repeat(5_000) + "late\r\nreturn\rend";
+    assert_eq!(scanned_starts(&long), starts_byte_by_byte(&long));
+    let mut seen = Vec::new();
+    each_line_start("a\nb\nc\nd\n", |start| {
+        seen.push(start);
+        seen.len() < 2
+    });
+    assert_eq!(seen, [2, 4]);
+}
+
+/// The bounds `lsp::apply` converts positions with, from a scan that stores no line start, agree
+/// with the index for every pair of lines, in both orders, and refuse a line past the end.
+#[test]
+fn content_bounds_agree_with_the_index_for_every_pair_of_lines() {
+    for text in TEXTS {
+        let index = LineIndex::new(text);
+        let content = |line: u32| {
+            index
+                .line_content(text, line)
+                .map(|range| (usize::from(range.start()), usize::from(range.end())))
+        };
+        for a in 0..index.line_count() as u32 + 2 {
+            for b in 0..index.line_count() as u32 + 2 {
+                let expected = match (content(a), content(b)) {
+                    (Some(a), Some(b)) => Some([a, b]),
+                    _ => None,
+                };
+                assert_eq!(
+                    content_bounds(text, a, b),
+                    expected,
+                    "{text:?} lines {a} and {b}"
+                );
+            }
+        }
+    }
+}
+
+/// Columns far into a long non-ASCII line, where whole chunks are counted before the walk, agree
+/// with walking every character, including at every chunk boundary and inside surrogate pairs.
+#[test]
+fn columns_deep_in_a_long_line_agree_with_walking_the_characters() {
+    let text = "ab".to_owned() + &"Привіт 👋 світе ".repeat(40) + "end\n";
+    let index = LineIndex::new(&text);
+    for encoding in Encoding::ALL {
+        let last = index.offset_in(
+            &text,
+            LineCol {
+                line: 0,
+                col: 9_999,
+            },
+            encoding,
+        );
+        assert_eq!(last.map(usize::from), Some(text.len() - 1), "{encoding:?}");
+        for col in 0..1_200 {
+            let pos = LineCol { line: 0, col };
+            assert_eq!(
+                index.offset_in(&text, pos, encoding),
+                walked_offset(&index, &text, pos, encoding),
+                "{pos:?} {encoding:?}"
+            );
         }
     }
 }
