@@ -12,8 +12,8 @@ readme = "README.md"
 
 [features]
 # Asks mimalloc to collect in `release_freed`, for a binary that has mimalloc in it: through
-# `override` below, or because it installs mimalloc as its global allocator itself, and sets
-# mimalloc's `abandoned_page_purge` before `main` (see `MI_OPTION_ABANDONED_PAGE_PURGE`). Version 2 of
+# `override` below, or because it installs mimalloc as its global allocator itself, and sets two
+# of mimalloc's options before `main` (`MI_OPTION_ABANDONED_PAGE_PURGE`, `MI_OPTION_ALLOW_THP`). Version 2 of
 # mimalloc, not the crate's default 3: measured in phrost after indexing 29 094 files (macOS 27,
 # 2026-11-09), v3 left a footprint of 207 MB where v2 left 160 MB, and peaked at 280 MB against
 # 200 MB, with the same indexing time.

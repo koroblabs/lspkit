@@ -31,17 +31,20 @@
 //!
 //! In the same runs `ps`'s RSS rose from 186 MB to 223 MB on phrost, which is what made mimalloc
 //! look worse when it was first tried. Both servers' test suites pass with it. It is a macOS
-//! remedy: on Linux, glibc gives a C library's freed blocks back by itself, and with `override`
-//! orthra measured 4.5 to 5 MB more RSS per project there: 3.6 MB of it transparent huge pages on
-//! a host with THP `always` (`MIMALLOC_ALLOW_THP=0` took them back), the rest mimalloc's reserve.
-//! A server takes the feature in a `[target.'cfg(target_os = "macos")'.dependencies]` table, as
-//! the template does.
+//! remedy: on Linux glibc gives a C library's freed blocks back by itself, and mimalloc there
+//! measured the same footprint as glibc on phrost (87 MB after bootstrap on a 10 678-file Drupal
+//! checkout) and 1.2 MB more per orthra project, so there is nothing to gain. A server takes the
+//! feature in a `[target.'cfg(target_os = "macos")'.dependencies]` table, as the template does.
 //!
-//! With the feature, `Heap` also sets one mimalloc option before `main`: `abandoned_page_purge`,
-//! so a thread that exits purges the pages it freed instead of leaving them committed in the
-//! segments its live data still holds. phrost's indexing threads exit after bootstrap, and the
-//! footprint after bootstrap went from 152-156 MB to 137-138, the peak from 193-196 to 173-174,
-//! with the same indexing time; see `MI_OPTION_ABANDONED_PAGE_PURGE`.
+//! With the feature, `Heap` also sets two of mimalloc's options before `main`:
+//!
+//! - `abandoned_page_purge`, so a thread that exits purges the pages it freed instead of leaving
+//!   them committed in the segments its live data still holds. phrost's indexing threads exit
+//!   after bootstrap, and the footprint after bootstrap went from 152-156 MB to 137-138, the peak
+//!   from 193-196 to 173-174, with the same indexing time; see `MI_OPTION_ABANDONED_PAGE_PURGE`.
+//! - `allow_thp` off. On a Linux host with transparent huge pages `always`, mimalloc's 32 MiB
+//!   aligned segments are backed with 2 MiB pages, and phrost stood at 177 MB after bootstrap
+//!   instead of 87; orthra at 30 MB instead of 26. See `MI_OPTION_ALLOW_THP`.
 //!
 //! [`Heap`] handles large blocks itself:
 //!
@@ -266,9 +269,19 @@ const _: () = assert!(
     "mimalloc's option table was renumbered; check MI_OPTION_ABANDONED_PAGE_PURGE"
 );
 
-/// Runs before `main`, from the binary's initializer section, so the option is set before any
-/// thread exits. The process cannot put `MIMALLOC_ABANDONED_PAGE_PURGE` in its own environment
-/// in time, and a check on every allocation would be a load on the hot path.
+/// mimalloc's `allow_thp`, by its index as above. On Linux it is whether mimalloc lets the kernel
+/// back its memory with transparent huge pages; with THP `always` (`madvise` is the common
+/// default, `always` is not rare) mimalloc's 32 MiB aligned segments get 2 MiB pages, and a
+/// mostly free segment costs its whole page. Measured with mimalloc as the process's `malloc`
+/// (Gentoo, kernel 6.18, THP `always`, 2026-11-09): phrost on a 10 678-file Drupal checkout stood
+/// at 177 MB after bootstrap against 87 under glibc, and at 87 again with this off; orthra on the
+/// helix checkout 30 MB against 25 and 26. On macOS the option changes nothing.
+#[cfg(feature = "mimalloc")]
+const MI_OPTION_ALLOW_THP: libmimalloc_sys::mi_option_t = 37;
+
+/// Runs before `main`, from the binary's initializer section, so the options are set before any
+/// thread exits or any segment is mapped. The process cannot put `MIMALLOC_*` in its own
+/// environment in time, and a check on every allocation would be a load on the hot path.
 #[cfg(feature = "mimalloc")]
 #[used]
 #[cfg_attr(
@@ -284,9 +297,12 @@ static CONFIGURE_MIMALLOC: unsafe extern "C" fn() = configure_mimalloc;
 
 #[cfg(feature = "mimalloc")]
 unsafe extern "C" fn configure_mimalloc() {
-    // SAFETY: writes one entry of mimalloc's static option table, which is valid before mimalloc
+    // SAFETY: writes two entries of mimalloc's static option table, which is valid before mimalloc
     // has initialized anything else.
-    unsafe { libmimalloc_sys::mi_option_set_enabled(MI_OPTION_ABANDONED_PAGE_PURGE, true) };
+    unsafe {
+        libmimalloc_sys::mi_option_set_enabled(MI_OPTION_ABANDONED_PAGE_PURGE, true);
+        libmimalloc_sys::mi_option_set_enabled(MI_OPTION_ALLOW_THP, false);
+    }
 }
 
 #[cfg(target_os = "macos")]

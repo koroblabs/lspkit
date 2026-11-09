@@ -107,10 +107,12 @@ Each one cost a session, and none of them is discoverable before it bites.
   (`lspkit_heap::stats()`) are back where they were after it went. A leak is a logic bug the
   allocator cannot fix; counting is what makes it a failing test instead of a slow climb. Take the
   crate's `override` feature on macOS, so what a parser written in C freed leaves the process, and
-  only there: on Linux glibc already gives it back and mimalloc measured 4.5 to 5 MB more per
-  project in orthra, 3.6 MB of it transparent huge pages on a host with THP `always`. Read memory as
-  the kernel charges it: `lspkit_perf::rss` reports the footprint on macOS, where `ps`'s RSS keeps
-  counting pages the allocator has already given back and so never falls.
+  only there: on Linux glibc already gives it back, and mimalloc measured the same footprint as
+  glibc on phrost and 1.2 MB more per orthra project, so there is nothing to gain. (With transparent
+  huge pages `always` on that host, mimalloc doubled phrost, 87 MB to 177; `Heap` turns mimalloc's
+  huge pages off for that reason.) Read memory as the kernel charges it: `lspkit_perf::rss` reports
+  the footprint on macOS, where `ps`'s RSS keeps counting pages the allocator has already given back
+  and so never falls.
 - **Every server has `check --ratchet`** (`lspkit-ratchet`): its findings counted by code against a
   baseline that only goes down. It is what makes a strict check liveable, and a code nothing has
   agreed to fails it, so a new check is a decision somebody reads in a diff.

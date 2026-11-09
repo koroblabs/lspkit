@@ -7,17 +7,22 @@ each entry lists what a dependent has to change.
 
 ### Changed
 
-- heap: with the `mimalloc` or `override` feature, `Heap` sets mimalloc's `abandoned_page_purge`
-  before `main`, so a thread that exits purges the pages it freed instead of leaving them committed
-  in the segments its live data still holds. phrost's indexing threads exit after bootstrap, and on
-  the 29 094-file checkout its footprint after bootstrap went from 152-156 MB to 137-138, the peak
-  from 193-196 to 173-174, with the same indexing time and request latencies. orthra, whose threads
-  keep nothing, measured the same with and without. Nothing to change in a server.
+- heap: with the `mimalloc` or `override` feature, `Heap` sets two of mimalloc's options before
+  `main`. `abandoned_page_purge`, so a thread that exits purges the pages it freed instead of
+  leaving them committed in the segments its live data still holds: phrost's indexing threads exit
+  after bootstrap, and on the 29 094-file checkout its footprint after bootstrap went from 152-156
+  MB to 137-138, the peak from 193-196 to 173-174, with the same indexing time and request
+  latencies; orthra, whose threads keep nothing, measured the same with and without. And `allow_thp`
+  off: on a Linux host with transparent huge pages `always`, mimalloc's 32 MiB aligned segments took
+  phrost on a 10 678-file Drupal checkout from 87 MB after bootstrap to 177, and orthra on helix
+  from 25 MB to 30; with the option off, 87 and 26. Nothing to change in a server.
 - heap, template: `override` is for macOS. On Linux glibc gives a C library's freed blocks back by
-  itself, and orthra measured 4.5 to 5 MB more RSS per project with mimalloc as the process's
-  `malloc` there, 3.6 MB of it transparent huge pages on a host with THP `always`. The template
-  takes the feature in its binary crate's `[target.'cfg(target_os = "macos")'.dependencies]` table,
-  and a server does the same.
+  itself, and mimalloc as the process's `malloc` measured the same footprint as glibc on phrost and
+  1.2 MB more per orthra project, so there is nothing to gain. `Heap`'s cache of freed large blocks
+  costs 11-13 MB on Linux with 20 files open (phrost 142 MB against 131 without `Heap`), the price
+  of reusing a parse buffer; a server that would rather not pay it lowers `set_cache_limit`. The
+  template takes the feature in its binary crate's
+  `[target.'cfg(target_os = "macos")'.dependencies]` table, and a server does the same.
 
 ## 0.1.1 (2026-11-09)
 

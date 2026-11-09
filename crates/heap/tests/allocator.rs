@@ -308,13 +308,19 @@ fn pages_a_thread_freed_before_exiting_leave_the_process() {
     drop(kept);
 }
 
-/// The option is set, by the index this crate names for it.
+/// The options are set, by the indices this crate names for them.
 #[cfg(feature = "mimalloc")]
 #[test]
-fn mimalloc_is_told_to_purge_what_an_exiting_thread_leaves() {
-    // SAFETY: reads one entry of mimalloc's option table.
-    let set = unsafe { libmimalloc_sys::mi_option_get(12) };
-    assert_eq!(set, 1, "abandoned_page_purge (option 12) is on");
+fn mimalloc_options_are_set_before_main() {
+    // SAFETY: reads two entries of mimalloc's option table.
+    let (purge, thp) = unsafe {
+        (
+            libmimalloc_sys::mi_option_get(12),
+            libmimalloc_sys::mi_option_get(37),
+        )
+    };
+    assert_eq!(purge, 1, "abandoned_page_purge (option 12) is on");
+    assert_eq!(thp, 0, "allow_thp (option 37) is off");
 }
 
 /// With mimalloc under `Heap`, what a C library frees leaves the process too: the system
